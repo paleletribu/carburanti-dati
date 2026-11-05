@@ -7,19 +7,24 @@ jobs:
   prova:
     runs-on: ubuntu-latest
     steps:
-      - name: Raggiungibilita' dei siti
+      - name: Portale Osservaprezzi
         continue-on-error: true
         run: |
-          for u in \
-            https://carburanti.mise.gov.it/ \
-            https://carburanti.mimit.gov.it/ \
-            https://www.mise.gov.it/ \
-            https://www.mimit.gov.it/ \
-            https://www.dati.gov.it/ \
-            https://dati.mimit.gov.it/ ; do
-            printf "%s -> " "$u"
-            curl -sS -o /dev/null -I -4 --connect-timeout 10 --max-time 20 \
-              -A "Mozilla/5.0 (X11; Linux x86_64) Chrome/124 Safari/537.36" \
-              -w "http=%{http_code} ip=%{remote_ip} total=%{time_total}s\n" "$u" 2>&1 || true
+          UA="Mozilla/5.0 (X11; Linux x86_64) Chrome/124 Safari/537.36"
+          echo "### HOME (segue i reindirizzamenti)"
+          curl -sSL -4 --connect-timeout 15 --max-time 40 -A "$UA" -o home.html \
+            -w "http=%{http_code} url=%{url_effective} bytes=%{size_download}\n" https://carburanti.mise.gov.it/ || echo "exit=$?"
+          echo "### link/riferimenti utili nella home"
+          grep -oiE "(href|src)=\"[^\"]*\"" home.html | grep -iE "csv|open|dati|api|download|\.js" | head -20 || true
+          echo "### API area"
+          curl -sS -4 --connect-timeout 15 --max-time 40 -A "$UA" -X POST \
+            -H "Content-Type: application/json" -H "Accept: application/json" \
+            -d '{"points":[{"lat":40.7300,"lng":17.5800}],"fuelType":"","priceOrder":"asc","radius":5}' \
+            -o area.json -w "http=%{http_code} bytes=%{size_download} type=%{content_type}\n" \
+            https://carburanti.mise.gov.it/ospzApi/search/area || echo "exit=$?"
+          head -c 1800 area.json; echo
+          echo "### pagina open data sullo stesso host?"
+          for p in /ospzApi/registry/brands /ospzApi/registry/fuelTypes /ospzSearch/ /opendata; do
+            printf "%s -> " "$p"
+            curl -sS -4 -o /dev/null --connect-timeout 10 --max-time 20 -A "$UA" -w "http=%{http_code} type=%{content_type}\n" "https://carburanti.mise.gov.it$p" 2>&1 || true
           done
-          echo "IP del runner:"; curl -sS --max-time 10 https://api.ipify.org || true; echo
