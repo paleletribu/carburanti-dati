@@ -1,0 +1,39 @@
+name: Aggiorna prezzi carburanti
+
+on:
+  schedule:
+    - cron: "30 5 * * *"   # ogni giorno alle 05:30 UTC (06:30 o 07:30 in Italia)
+  workflow_dispatch:        # permette di lanciarlo a mano dal sito di GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  scarica:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scarica i due file dal Ministero
+        run: |
+          set -e
+          mkdir -p tmp dati
+          for f in anagrafica_impianti_attivi prezzo_alle_8; do
+            curl -fsSL --retry 4 --retry-delay 15 --max-time 300 \
+              -A "Mozilla/5.0 (compatible; carburanti-dati)" \
+              -o "tmp/$f.csv" "https://www.mimit.gov.it/images/exportCSV/$f.csv"
+            # controllo: il file deve contenere l'intestazione attesa e non essere vuoto
+            head -c 4000 "tmp/$f.csv" | grep -qi "idImpianto"
+            test "$(wc -c < "tmp/$f.csv")" -gt 100000
+            mv "tmp/$f.csv" "dati/$f.csv"
+          done
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > dati/ultimo_aggiornamento.txt
+          ls -l dati
+
+      - name: Salva se ci sono modifiche
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add dati
+          git diff --cached --quiet || git commit -m "Aggiornamento dati $(date -u +%F)"
+          git push
