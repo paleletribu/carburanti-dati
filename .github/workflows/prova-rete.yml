@@ -1,0 +1,25 @@
+name: Prova rete
+
+on:
+  workflow_dispatch:
+
+jobs:
+  prova:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Raggiungibilita' dei siti
+        continue-on-error: true
+        run: |
+          for u in \
+            https://carburanti.mise.gov.it/ \
+            https://carburanti.mimit.gov.it/ \
+            https://www.mise.gov.it/ \
+            https://www.mimit.gov.it/ \
+            https://www.dati.gov.it/ \
+            https://dati.mimit.gov.it/ ; do
+            printf "%s -> " "$u"
+            curl -sS -o /dev/null -I -4 --connect-timeout 10 --max-time 20 \
+              -A "Mozilla/5.0 (X11; Linux x86_64) Chrome/124 Safari/537.36" \
+              -w "http=%{http_code} ip=%{remote_ip} total=%{time_total}s\n" "$u" 2>&1 || true
+          done
+          echo "IP del runner:"; curl -sS --max-time 10 https://api.ipify.org || true; echo
