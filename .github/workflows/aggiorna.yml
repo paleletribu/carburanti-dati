@@ -20,7 +20,7 @@ jobs:
           for u in https://www.mimit.gov.it/ https://www.mimit.gov.it/images/exportCSV/prezzo_alle_8.csv; do
             echo "== $u"
             curl -sS -o /dev/null -I --connect-timeout 20 --max-time 40 \
-              -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36" \
+              -A "carburanti-dati (copia dei dati open data MIMIT; github.com/paleletribu/carburanti-dati)" \
               -w "http=%{http_code} ip=%{remote_ip} connect=%{time_connect}s tls=%{time_appconnect}s total=%{time_total}s\n" "$u" || echo "curl exit=$?"
           done
 
@@ -28,7 +28,7 @@ jobs:
         run: |
           set -e
           mkdir -p tmp dati
-          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+          UA="carburanti-dati (copia dei dati open data MIMIT; github.com/paleletribu/carburanti-dati)"
           for f in anagrafica_impianti_attivi prezzo_alle_8; do
             curl -fsSL --retry 2 --retry-delay 10 --connect-timeout 30 --max-time 180 \
               -A "$UA" -w "$f: http=%{http_code} bytes=%{size_download} time=%{time_total}s\n" \
