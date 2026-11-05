@@ -7,24 +7,16 @@ jobs:
   prova:
     runs-on: ubuntu-latest
     steps:
-      - name: Portale Osservaprezzi
+      - name: Come chiama l'API il portale
         continue-on-error: true
         run: |
           UA="Mozilla/5.0 (X11; Linux x86_64) Chrome/124 Safari/537.36"
-          echo "### HOME (segue i reindirizzamenti)"
-          curl -sSL -4 --connect-timeout 15 --max-time 40 -A "$UA" -o home.html \
-            -w "http=%{http_code} url=%{url_effective} bytes=%{size_download}\n" https://carburanti.mise.gov.it/ || echo "exit=$?"
-          echo "### link/riferimenti utili nella home"
-          grep -oiE "(href|src)=\"[^\"]*\"" home.html | grep -iE "csv|open|dati|api|download|\.js" | head -20 || true
-          echo "### API area"
-          curl -sS -4 --connect-timeout 15 --max-time 40 -A "$UA" -X POST \
-            -H "Content-Type: application/json" -H "Accept: application/json" \
-            -d '{"points":[{"lat":40.7300,"lng":17.5800}],"fuelType":"","priceOrder":"asc","radius":5}' \
-            -o area.json -w "http=%{http_code} bytes=%{size_download} type=%{content_type}\n" \
-            https://carburanti.mise.gov.it/ospzApi/search/area || echo "exit=$?"
-          head -c 1800 area.json; echo
-          echo "### pagina open data sullo stesso host?"
-          for p in /ospzApi/registry/brands /ospzApi/registry/fuelTypes /ospzSearch/ /opendata; do
-            printf "%s -> " "$p"
-            curl -sS -4 -o /dev/null --connect-timeout 10 --max-time 20 -A "$UA" -w "http=%{http_code} type=%{content_type}\n" "https://carburanti.mise.gov.it$p" 2>&1 || true
-          done
+          curl -sSL -4 --max-time 60 -A "$UA" -o main.js https://carburanti.mise.gov.it/ospzSearch/main.ee9a1e3529ef567bca33.js
+          ls -l main.js
+          python3 - <<'PY'
+          import re
+          s=open('main.js',encoding='utf-8',errors='replace').read()
+          for m in re.finditer(r'ospzApi',s):
+              a=max(0,m.start()-150); b=min(len(s),m.end()+350)
+              print('---'); print(s[a:b].replace('\n',' '))
+          PY
